@@ -1,0 +1,34 @@
+import torch
+from torch.utils.data import DataLoader
+from sklearn.metrics import classification_report, f1_score, confusion_matrix
+from preprocess import encode, clean_text
+from config import Config
+
+
+def evaluate(model, texts, labels, vocab):
+    model.eval()
+
+    X = [encode(clean_text(t), vocab, Config.MAX_LEN) for t in texts]
+    X = torch.tensor(X)
+    y = torch.tensor(labels)
+
+    dataset = torch.utils.data.TensorDataset(X, y)
+    loader = DataLoader(dataset, batch_size=32)
+
+    preds, true = [], []
+
+    with torch.no_grad():
+        for x_batch, y_batch in loader:
+            outputs = model(x_batch)
+            _, p = torch.max(outputs, 1)
+
+            preds.extend(p.tolist())
+            true.extend(y_batch.tolist())
+
+    print("\nClassification Report:")
+    print(classification_report(true, preds))
+
+    print("Macro F1:", f1_score(true, preds, average="macro"))
+
+    print("Confusion Matrix:")
+    print(confusion_matrix(true, preds))

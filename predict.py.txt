@@ -1,0 +1,31 @@
+import torch
+from preprocess import clean_text, encode
+from config import Config
+from models import LSTMModel
+
+LABELS = ["Bearish", "Bullish", "Neutral"]
+
+
+class Predictor:
+    def __init__(self, path="model.pth"):
+        checkpoint = torch.load(path)
+
+        self.vocab = checkpoint["vocab"]
+        self.model = LSTMModel(len(self.vocab), Config.EMBED_DIM, Config.HIDDEN_DIM, Config.NUM_CLASSES)
+        self.model.load_state_dict(checkpoint["model"])
+        self.model.eval()
+
+    def predict(self, text):
+        text = clean_text(text)
+        x = encode(text, self.vocab, Config.MAX_LEN)
+        x = torch.tensor(x).unsqueeze(0)
+
+        with torch.no_grad():
+            outputs = self.model(x)
+            probs = torch.softmax(outputs, dim=1)
+            pred = torch.argmax(probs).item()
+
+        return {
+            "label": LABELS[pred],
+            "probabilities": probs.tolist()[0]
+        }

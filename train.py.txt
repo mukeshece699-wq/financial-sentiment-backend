@@ -1,0 +1,63 @@
+import torch
+from torch.utils.data import Dataset, DataLoader
+from config import Config
+from preprocess import clean_text, build_vocab, encode
+from data import load_data
+from models import LSTMModel
+from evaluate import evaluate
+
+
+class TextDataset(Dataset):
+    def __init__(self, texts, labels, vocab):
+        self.texts = texts
+        self.labels = labels
+        self.vocab = vocab
+
+    def __len__(self):
+        return len(self.texts)
+
+    def __getitem__(self, idx):
+        x = encode(self.texts[idx], self.vocab, Config.MAX_LEN)
+        y = self.labels[idx]
+        return torch.tensor(x), torch.tensor(y)
+
+
+def train():
+    train_data, val_data = load_data()
+
+    train_texts = [clean_text(x) for x in train_data['text']]
+    val_texts = [clean_text(x) for x in val_data['text']]
+
+    vocab = build_vocab(train_texts)
+
+    train_dataset = TextDataset(train_texts, train_data['label'], vocab)
+    train_loader = DataLoader(train_dataset, batch_size=Config.BATCH_SIZE, shuffle=True)
+
+    model = LSTMModel(len(vocab), Config.EMBED_DIM, Config.HIDDEN_DIM, Config.NUM_CLASSES)
+
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=Config.LR)
+
+    for epoch in range(Config.EPOCHS):
+        model.train()
+        total_loss = 0
+
+        for x, y in train_loader:
+            optimizer.zero_grad()
+            outputs = model(x)
+            loss = criterion(outputs, y)
+            loss.backward()
+            optimizer.step()
+
+            total_loss += loss.item()
+
+        print(f"Epoch {epoch+1}, Loss: {total_loss:.4f}")
+
+    # Evaluate
+    evaluate(model, val_texts, val_data['label'], vocab)
+
+    torch.save({"model": model.state_dict(), "vocab": vocab}, "model.pth")
+
+
+if __name__ == "__main__":
+    train()

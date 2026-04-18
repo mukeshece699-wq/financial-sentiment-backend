@@ -1,0 +1,6 @@
+torch
+datasets
+scikit-learn
+fastapi
+uvicorn
+pydantic

@@ -1,0 +1,9 @@
+class Config:
+    MAX_LEN = 50
+    VOCAB_SIZE = 10000
+    EMBED_DIM = 128
+    HIDDEN_DIM = 128
+    NUM_CLASSES = 3
+    BATCH_SIZE = 32
+    LR = 1e-3
+    EPOCHS = 5
